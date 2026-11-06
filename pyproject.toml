@@ -1,0 +1,35 @@
+
+[project]
+name = "numreason"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+
+dependencies = [
+    # PyTorch
+    "torch==2.11.0",
+    "torchvision==0.26.0",
+
+    # Hugging Face: Qwen training and parameter-efficient fine-tuning
+    "transformers==5.8.1",
+    "datasets==4.8.5",
+    "accelerate==1.13.0",
+    "peft==0.19.1",
+    "trl==1.17.1",
+    "bitsandbytes==0.50.2",
+    "pillow==12.0.0",
+
+    # Optimized Qwen3.5 GPU kernels
+    "flash-linear-attention[cuda,conv1d]",
+
+    # Numerical evaluation
+    "numpy==2.3.4",
+
+    # Visualization
+    "matplotlib==3.10.6",
+
+    # Experiment tracking
+    "wandb==0.23.1",
+]
+
+[tool.databricks.environment]
+environment_version = "6"
