@@ -21,7 +21,7 @@ from transformers import (
 )
 
 
-STORAGE_DIR = Path(os.environ.get("NUMREASON_STORAGE", str(Path.home() / "numreason_storage")))
+STORAGE_DIR = Path("/Volumes/workspace/default/numreason")
 DATA_DIR = STORAGE_DIR / "data_split"
 BASE_MODEL_DIR = STORAGE_DIR / "models" / "Qwen3.5-0.8B"
 MODEL_DIR = STORAGE_DIR / "models" / "full_sft"
@@ -29,10 +29,10 @@ RESULTS_DIR = STORAGE_DIR / "results" / "training" / "full_sft"
 
 SEED = 189
 NUM_EPOCHS = 5
-BATCH_SIZE = int(os.environ.get("NUMREASON_TRAIN_BATCH", "2"))
-EVAL_BATCH_SIZE = int(os.environ.get("NUMREASON_EVAL_BATCH", "4"))
-GRADIENT_ACCUMULATION_STEPS = int(os.environ.get("NUMREASON_GRAD_ACCUM", "8"))
-LEARNING_RATE = float(os.environ.get("NUMREASON_FULL_LR", "1e-5"))
+BATCH_SIZE = 16
+EVAL_BATCH_SIZE = 32
+GRADIENT_ACCUMULATION_STEPS = 1
+LEARNING_RATE = 1e-5
 MAX_LENGTH = 1536
 
 PROMPT = (
@@ -97,10 +97,11 @@ def prepare_dataset(dataset, tokenizer):
     return processed
 
 
-class ValidationHistoryCallback(TrainerCallback):
+class BestModelCallback(TrainerCallback):
     def __init__(self):
         self.best_loss = float("inf")
         self.best_epoch = None
+        self.best_weights = None
 
         self.previous_loss = None
         self.stopped_early = False
@@ -129,6 +130,11 @@ class ValidationHistoryCallback(TrainerCallback):
 
             self.best_loss = loss
             self.best_epoch = epoch
+
+            self.best_weights = {
+                name: tensor.detach().cpu().clone()
+                for name, tensor in model.state_dict().items()
+            }
 
             print(f"New best model at epoch {epoch}")
 
@@ -197,8 +203,6 @@ def main():
     )
 
     model.config.use_cache = False
-
-    # Full fine-tuning: update the original model weights, without PEFT.
     model.requires_grad_(True)
 
     trainable_params = sum(
@@ -212,7 +216,7 @@ def main():
         per_device_train_batch_size=BATCH_SIZE,
         per_device_eval_batch_size=EVAL_BATCH_SIZE,
         gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS,
-        
+        train_sampling_strategy="group_by_length",
         dataloader_num_workers=4,
         dataloader_pin_memory=True,
         dataloader_persistent_workers=True,
@@ -225,14 +229,10 @@ def main():
         bf16=True,
         bf16_full_eval=True,
         tf32=True,
-        gradient_checkpointing=True,
-        gradient_checkpointing_kwargs={"use_reentrant": False},
+        gradient_checkpointing=False,
         eval_strategy="epoch",
-        save_strategy="epoch",
-        load_best_model_at_end=True,
-        metric_for_best_model="eval_loss",
-        greater_is_better=False,
-        save_total_limit=2,
+        save_strategy="no",
+        load_best_model_at_end=False,
         logging_steps=20,
         report_to="none",
         disable_tqdm=False,
@@ -247,7 +247,7 @@ def main():
         pad_to_multiple_of=8,
     )
 
-    best_callback = ValidationHistoryCallback()
+    best_callback = BestModelCallback()
 
     trainer = Trainer(
         model=model,
@@ -271,6 +271,11 @@ def main():
 
     peak_memory = torch.cuda.max_memory_allocated() / 1024**3
     peak_reserved = torch.cuda.max_memory_reserved() / 1024**3
+
+    if best_callback.best_weights is None:
+        raise RuntimeError("No best model was selected.")
+
+    model.load_state_dict(best_callback.best_weights)
 
     model.save_pretrained(str(MODEL_DIR))
     tokenizer.save_pretrained(str(MODEL_DIR))
