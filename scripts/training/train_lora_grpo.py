@@ -30,8 +30,8 @@ from trl import GRPOConfig, GRPOTrainer
 STORAGE_DIR = Path("/Volumes/workspace/default/numreason")
 DATA_DIR = STORAGE_DIR / "data_split"
 BASE_MODEL_DIR = STORAGE_DIR / "models" / "Qwen3.5-0.8B"
-MODEL_DIR = STORAGE_DIR / "models" / "lora_grpo_base"
-RESULTS_DIR = STORAGE_DIR / "results" / "training" / "lora_grpo_base"
+MODEL_DIR = STORAGE_DIR / "models" / "lora_grpo"
+RESULTS_DIR = STORAGE_DIR / "results" / "training" / "lora_grpo"
 
 SEED = 189
 NUM_EPOCHS = 1

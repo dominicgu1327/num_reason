@@ -29,8 +29,8 @@ STORAGE_DIR = Path("/Volumes/workspace/default/numreason")
 DATA_DIR = STORAGE_DIR / "data_split"
 BASE_MODEL_DIR = STORAGE_DIR / "models" / "Qwen3.5-0.8B"
 SFT_MODEL_DIR = STORAGE_DIR / "models" / "lora_sft"
-MODEL_DIR = STORAGE_DIR / "models" / "lora_grpo"
-RESULTS_DIR = STORAGE_DIR / "results" / "training" / "lora_grpo"
+MODEL_DIR = STORAGE_DIR / "models" / "lora_sft_grpo"
+RESULTS_DIR = STORAGE_DIR / "results" / "training" / "lora_sft_grpo"
 
 SEED = 189
 NUM_EPOCHS = 1
